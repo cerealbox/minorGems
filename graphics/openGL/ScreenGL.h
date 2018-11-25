@@ -120,6 +120,7 @@
 #include "MouseHandlerGL.h"
 #include "KeyboardHandlerGL.h"
 #include "SceneHandlerGL.h"
+#include "JoyHandlerGL.h" // controller support.
 
 #include "RedrawListenerGL.h"
 
@@ -141,6 +142,7 @@ void callbackSpecialKeyboardUp( int inKey, int inX, int inY );
 void callbackMotion( int inX, int inY );
 void callbackPassiveMotion( int inX, int inY );
 void callbackMouse( int inButton, int inState, int inX, int inY );
+void callbackJoyEvent(int event, int value, int value2 = 0); // controller support.
 void callbackPreDisplay();
 void callbackDisplay();
 void callbackIdle();
@@ -666,6 +668,19 @@ class ScreenGL {
             }
 
 
+        // controller support:
+        void setLastMouseButtonRight(char right) {
+            mLastMouseButtonRight = right;
+        }
+
+        // controller support:
+        void addJoyHandler(JoyHandlerGL* inListener) {
+            mJoyHandlerVector->push_back(inListener);
+        }
+        void removeJoyHandler(JoyHandlerGL* inListener) {
+            mJoyHandlerVector->deleteElementEqualTo(inListener);
+        }
+
 
     private :
 
@@ -687,6 +702,7 @@ class ScreenGL {
 		friend void callbackPassiveMotion( int inX, int inY );
 		friend void callbackMouse( int inButton, int inState, 
                                    int inX, int inY );
+        friend void callbackJoyEvent(int event, int value, int value2); // controller support.
 		friend void callbackPreDisplay();
         friend void callbackDisplay();
 		friend void callbackIdle();
@@ -753,8 +769,7 @@ class ScreenGL {
 		SimpleVector<KeyboardHandlerGL*> *mKeyboardHandlerVector;
 		SimpleVector<SceneHandlerGL*> *mSceneHandlerVector;
 		SimpleVector<RedrawListenerGL*> *mRedrawListenerVector;
-
-		
+        SimpleVector<JoyHandlerGL*> *mJoyHandlerVector; // controller support.
 
 		/**
 		 * Gets whether at least one of our keyboard handlers is focused.
@@ -934,7 +949,6 @@ inline void ScreenGL::addMouseHandler( MouseHandlerGL *inListener ) {
 inline void ScreenGL::removeMouseHandler( MouseHandlerGL *inListener ) {
 	mMouseHandlerVector->deleteElementEqualTo( inListener );
 	}
-
 
 
 inline void ScreenGL::addKeyboardHandler( KeyboardHandlerGL *inListener,

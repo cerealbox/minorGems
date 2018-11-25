@@ -24,6 +24,8 @@ int main( int inArgCount, char **inArgs ) {
     }
 
 
+static void warpMouseToScreenPos2( int inX, int inY ); // controller support.
+
 #include <SDL/SDL.h>
 
 
@@ -39,6 +41,7 @@ int main( int inArgCount, char **inArgs ) {
 
 #include "minorGems/graphics/openGL/SceneHandlerGL.h"
 #include "minorGems/graphics/openGL/MouseHandlerGL.h"
+#include "minorGems/graphics/openGL/JoyHandlerGL.h" // controller support.
 #include "minorGems/graphics/openGL/KeyboardHandlerGL.h"
 #include "minorGems/ui/event/ActionListener.h"
 
@@ -382,11 +385,11 @@ static void takeScreenShot();
 
 
 
-
+// controller support - GameSceneHandler also inherits from "JoyHandlerGL" now.
 
 class GameSceneHandler :
     public SceneHandlerGL, public MouseHandlerGL, public KeyboardHandlerGL,
-    public RedrawListenerGL, public ActionListener  { 
+    public RedrawListenerGL, public ActionListener, public JoyHandlerGL  { 
 
 	public:
 
@@ -431,6 +434,86 @@ class GameSceneHandler :
         virtual void mouseDragged( int inX, int inY );
         virtual void mousePressed( int inX, int inY );
         virtual void mouseReleased( int inX, int inY );
+
+        // controller support:
+        virtual void joyButtonDown(int button) {
+            
+            // hijack L button for left mouse click, R button for right mouse click:
+            
+            bool savedRight = isLastMouseButtonRight(); // remember last mouse button clicked.
+            int X, Y;
+            ::getLastMouseScreenPos(&X, &Y);
+            if (button == JOY_L) {
+                setLastMouseButtonRight(false);
+                mousePressed(X, Y);
+                mouseReleased(X, Y);
+            } else if (button == JOY_R) {
+                setLastMouseButtonRight(true);
+                mousePressed(X, Y);
+                mouseReleased(X, Y);                
+            }
+            setLastMouseButtonRight(savedRight); // restore last mouse button clicked.
+            
+            ::joyButtonDown(button);
+        }
+        virtual void joyButtonUp(int button) {
+            ::joyButtonUp(button);
+        }
+        virtual void joyDPadDown(int dir) {
+            ::joyDPadDown(dir);
+        }
+        virtual void joyDPadUp(void) {
+            ::joyDPadUp();
+        }
+        virtual void joyRudder(int rudder, short pressure) {
+            ::joyRudder(rudder, pressure);
+        }
+        virtual void joyThumbstick(int stick, short x, short y) {
+
+            // hijack thumbsticks for mouse movement and running:
+
+            bool savedRight = isLastMouseButtonRight(); // remember last mouse button clicked:
+            setLastMouseButtonRight(false);
+
+            // -32768 32768
+            //fprintf(stderr, "[%d,%d]\n", x, y);
+            int xRatio = ((65536) / screenWidth) + 1;
+            int yRatio = 65536 / screenHeight;
+            int xx = (screenWidth / 2) + (x / xRatio);
+            int yy = (screenHeight / 2) + (y / yRatio);
+
+            warpMouseToScreenPos2(xx, yy);
+
+            // run if thumbstick pressed real far:
+            static bool pressed = false;
+            if (stick == JOY_L_THUMB) {
+
+                //if (x != 0 || y != 0) {
+                if (abs(x) > 25000 || abs(y) > 25000) {
+                    if (pressed) {
+                        mouseDragged(xx, yy);
+                    } else {
+                        mouseMoved(xx, yy);
+                        mousePressed(xx, yy);
+                        pressed = true;
+                    }
+                } else if (pressed) {
+                    mouseReleased(xx, yy);
+                    pressed = false;
+                } else {
+                    mouseMoved(xx, yy);
+                }
+
+            } else if (stick == JOY_R_THUMB) {
+                mouseMoved(xx, yy);
+            }
+
+            setLastMouseButtonRight(savedRight); // restore last mouse button clicked.
+
+
+            ::joyThumbstick(stick, x, y);
+        }
+
 
         // implements the KeyboardHandlerGL interface
         virtual char isFocused() {
@@ -2449,6 +2532,7 @@ int mainFunction( int inNumArgs, char **inArgs ) {
         // handle events right away
         screen->addMouseHandler( sceneHandler );
         screen->addKeyboardHandler( sceneHandler );
+        screen->addJoyHandler(sceneHandler); // controller support.
 
         if( screen->isPlayingBack() ) {
             
@@ -2492,8 +2576,6 @@ int mainFunction( int inNumArgs, char **inArgs ) {
     }
 
 
-
-
 GameSceneHandler::GameSceneHandler( ScreenGL *inScreen )
     : mScreen( inScreen ),
       mPaused( false ),
@@ -2529,6 +2611,7 @@ GameSceneHandler::~GameSceneHandler() {
     mScreen->removeMouseHandler( this );
     mScreen->removeSceneHandler( this );
     mScreen->removeRedrawListener( this );
+    mScreen->removeJoyHandler(this); // controller support.
 
     if( demoMode ) {
         // panel has not freed itself yet
@@ -2801,6 +2884,32 @@ static void warpMouseToScreenPos( int inX, int inY ) {
         }
     }
 
+
+// controller support:
+// @NOTE: copy/paste of: static void warpMouseToScreenPos( int inX, int inY );
+void warpMouseToScreenPos2( int inX, int inY ) {
+    if( inX == lastMouseX && inY == lastMouseY ) {
+        // mouse already there, no need to warp
+        // (and warping when already there may or may not generate
+        //  an event on some platforms, which causes trouble when we
+        //  try to ignore the event)
+        return;
+        }
+
+    if( SDL_GetAppState() & SDL_APPINPUTFOCUS ) {
+        
+        if( frameDrawerInited ) {
+            // not ignoring mouse events currently due to demo code panel
+            // or loading message... frame drawer not inited yet
+            ignoreNextMouseEvent = true;
+            xCoordToIgnore = inX;
+            yCoordToIgnore = inY;
+            }    
+
+        SDL_WarpMouse( inX, inY );
+        }
+    }
+
     
 
 
@@ -2916,6 +3025,7 @@ void GameSceneHandler::drawScene() {
 
             mScreen->addMouseHandler( this );
             mScreen->addKeyboardHandler( this );
+            screen->addJoyHandler(this); // controller support.
 
             screen->startRecordingOrPlayback();
             }
@@ -3979,6 +4089,9 @@ char isShiftKeyDown() {
 
 char isLastMouseButtonRight() {
     return screen->isLastMouseButtonRight();
+    }
+void setLastMouseButtonRight(char right) {
+    return screen->setLastMouseButtonRight(right);
     }
 
 

@@ -139,6 +139,13 @@ void getScreenDimensions( int *outWidth, int *outHeight );
 void drawFrame( char inUpdate );
 
 
+//controller support:
+void joyButtonDown(int button);
+void joyButtonUp(int button);
+void joyDPadDown(int dir);
+void joyDPadUp(void);
+void joyRudder(int rudder, short pressure);
+void joyThumbstick(int stick, short x, short y);
 
 // these are all in world coordinates based on what is set
 // in setViewCenterPosition and setViewSize below
@@ -159,6 +166,7 @@ void pointerUp( float inX, float inY );
 // called by game to check which button was pressed
 // for now, can only differentiate right clicks from other clicks
 char isLastMouseButtonRight();
+void setLastMouseButtonRight(char right);
 
 
 
