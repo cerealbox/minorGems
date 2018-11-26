@@ -146,6 +146,7 @@ void joyDPadDown(int dir);
 void joyDPadUp(void);
 void joyRudder(int rudder, short pressure);
 void joyThumbstick(int stick, short x, short y);
+void getScreenCenterPlayerOffset(int* X, int* Y);
 
 // these are all in world coordinates based on what is set
 // in setViewCenterPosition and setViewSize below

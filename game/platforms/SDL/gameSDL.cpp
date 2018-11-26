@@ -475,12 +475,17 @@ class GameSceneHandler :
             bool savedRight = isLastMouseButtonRight(); // remember last mouse button clicked:
             setLastMouseButtonRight(false);
 
+            int X, Y;
+            ::getScreenCenterPlayerOffset(&X, &Y);
+
             // -32768 32768
             //fprintf(stderr, "[%d,%d]\n", x, y);
+            // center mouse cursor on player location:
+            // @TODO: 96 and 48 will likely be off for non 720p resolutions.
             int xRatio = ((65536) / screenWidth) + 1;
             int yRatio = 65536 / screenHeight;
-            int xx = (screenWidth / 2) + (x / xRatio);
-            int yy = (screenHeight / 2) + (y / yRatio);
+            int xx = (screenWidth / 2) + (x / xRatio) + X + (96 * (X == 0 ? 0 : X > 0 ? -1 : 1));
+            int yy = (screenHeight / 2) + (y / yRatio) - Y + (48 * (Y == 0 ? 0 : Y > 0 ? 1 : -1));
 
             warpMouseToScreenPos2(xx, yy);
 
@@ -488,7 +493,6 @@ class GameSceneHandler :
             static bool pressed = false;
             if (stick == JOY_L_THUMB) {
 
-                //if (x != 0 || y != 0) {
                 if (abs(x) > 25000 || abs(y) > 25000) {
                     if (pressed) {
                         mouseDragged(xx, yy);
@@ -497,11 +501,16 @@ class GameSceneHandler :
                         mousePressed(xx, yy);
                         pressed = true;
                     }
-                } else if (pressed) {
+                } else if (x == 0 && y == 0 && pressed) {
+                    mouseMoved(xx, yy);
                     mouseReleased(xx, yy);
                     pressed = false;
                 } else {
-                    mouseMoved(xx, yy);
+                    if (pressed) {
+                        // mouseDragged(xx, yy); //@TODO: try with this commented out.
+                    } else {
+                        // mouseMoved(xx, yy); //@TODO: try with this commented out as well..
+                    }
                 }
 
             } else if (stick == JOY_R_THUMB) {
