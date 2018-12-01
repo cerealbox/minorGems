@@ -495,22 +495,25 @@ class GameSceneHandler :
 
                 if (abs(x) > 25000 || abs(y) > 25000) {
                     if (pressed) {
+                        mouseMoved(xx, yy);
                         mouseDragged(xx, yy);
                     } else {
                         mouseMoved(xx, yy);
                         mousePressed(xx, yy);
                         pressed = true;
                     }
-                } else if (x == 0 && y == 0 && pressed) {
+                //} else if (x == 0 && y == 0 && pressed) {
+                } else if (pressed) {
                     mouseMoved(xx, yy);
                     mouseReleased(xx, yy);
                     pressed = false;
                 } else {
-                    if (pressed) {
-                        // mouseDragged(xx, yy); //@TODO: try with this commented out.
-                    } else {
-                        // mouseMoved(xx, yy); //@TODO: try with this commented out as well..
-                    }
+                    mouseMoved(xx, yy);
+                    // if (pressed) {
+                    //     mouseDragged(xx, yy); //@TODO: try with this commented out.
+                    // } else {
+                    //     mouseMoved(xx, yy); //@TODO: try with this commented out as well..
+                    // }
                 }
 
             } else if (stick == JOY_R_THUMB) {
