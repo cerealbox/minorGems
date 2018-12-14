@@ -4377,13 +4377,18 @@ const char *translate( const char *inTranslationKey ) {
 
 
 
-void saveScreenShot( const char *inPrefix ) {
+static Image **screenShotImageDest = NULL;
+
+
+void saveScreenShot( const char *inPrefix, Image **outImage ) {
     if( screenShotPrefix != NULL ) {
         delete [] screenShotPrefix;
         }
     screenShotPrefix = stringDuplicate( inPrefix );
     shouldTakeScreenshot = true;
     manualScreenShot = true;
+
+    screenShotImageDest = outImage;
     }
 
 
@@ -4606,11 +4611,17 @@ void takeScreenShot() {
     
 
 
-    FileOutputStream tgaStream( file );
     
-    screenShotConverter.formatImage( screenImage, &tgaStream );
-
-    delete screenImage;
+    
+    if( screenShotImageDest != NULL ) {
+        // skip writing to file
+        *screenShotImageDest = screenImage;
+        }
+    else {
+        FileOutputStream tgaStream( file );
+        screenShotConverter.formatImage( screenImage, &tgaStream );
+        delete screenImage;
+        }
     
     delete file;
 
@@ -5415,7 +5426,7 @@ void setClipboardText( const char *inText  ) {
 
 
 void launchURL( char *inURL ) {
-    char *call = autoSprintf( "xdg-open \"%s\"", inURL );    
+    char *call = autoSprintf( "xdg-open \"%s\" &", inURL );    
     system( call );
     delete [] call;
     }
